@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Euler mejorado · Dos pendientes</title>
+<meta name="description" content="Calculadora del método de Euler mejorado (Heun) con comparación contra Euler explícito y la solución exacta. Usa Math.js.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e7ecec; --panel:#f7f9f8; --ink:#14262e; --soft:#52666e; --line:#c6d2d4;
+  --euler:#e0603a; --heun:#0e8587; --exact:#1d3557; --topo:#14262e;
+  --head:'Bricolage Grotesque',system-ui,sans-serif; --body:'Figtree',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0e1b23; --panel:#16272f; --ink:#e3edf0; --soft:#8ea4ad; --line:#2b414c; --euler:#ff8a63; --heun:#3cc4c2; --exact:#9db8e8; --topo:#e3edf0; }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0; background:var(--bg); color:var(--ink); font:17px/1.6 var(--body)}
+.wrap{max-width:1100px; margin:0 auto; padding:0 20px 80px}
+
+/* hero con curvas de nivel */
+.hero{position:relative; padding:64px 0 36px; overflow:hidden}
+.hero svg.topo{position:absolute; right:-80px; top:-30px; width:640px; opacity:.13; color:var(--topo); pointer-events:none}
+.tag{display:inline-block; font:500 12px var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--heun); border:1px solid currentColor; padding:4px 10px; border-radius:99px}
+h1{font:800 clamp(46px,9vw,104px)/.92 var(--head); letter-spacing:-.035em; margin:18px 0 12px; position:relative}
+h1 span{color:var(--heun)}
+.sub{font-size:21px; color:var(--soft); max-width:36ch; margin:0; position:relative}
+h2{font:800 28px var(--head); letter-spacing:-.02em; margin:0 0 6px}
+section{margin-top:54px}
+.lead{color:var(--soft); margin:0 0 22px; max-width:62ch}
+
+.duo{display:grid; grid-template-columns:1fr 1fr; gap:18px}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:22px 24px}
+.card h3{font:600 14px var(--mono); letter-spacing:.1em; text-transform:uppercase; margin:0 0 10px; display:flex; align-items:center; gap:8px}
+.dot{width:11px; height:11px; border-radius:50%; display:inline-block}
+.math{font:500 15.5px/1.9 var(--mono); background:var(--bg); border-radius:10px; padding:10px 14px; margin:10px 0 0; overflow-x:auto}
+.card p{margin:6px 0 0; font-size:16.5px}
+.wide{margin-top:18px}
+
+.lab{display:grid; grid-template-columns:minmax(290px,370px) 1fr; gap:24px; align-items:start}
+form{background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:22px; box-shadow:0 14px 40px -22px rgba(10,30,40,.45)}
+label{display:block; font:500 11.5px var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--soft); margin:15px 0 6px}
+form>label:first-child{margin-top:0}
+input[type=text],input[type=number]{width:100%; font:500 16px var(--mono); padding:10px 12px; background:var(--bg); color:var(--ink); border:1.5px solid var(--line); border-radius:10px; transition:border-color .2s}
+input:focus{outline:none; border-color:var(--heun)}
+.row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.fx{display:flex; align-items:center; gap:9px}
+.fx span{font:600 17px var(--mono); white-space:nowrap; color:var(--heun)}
+.hint{font-size:13.5px; color:var(--soft); margin:6px 0 0; line-height:1.45}
+.chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:8px}
+button{font:600 15px var(--body); cursor:pointer}
+.chip{background:var(--bg); border:1px solid var(--line); color:var(--ink); border-radius:99px; padding:4px 11px; font:400 13px var(--mono); transition:.15s}
+.chip:hover{border-color:var(--heun); color:var(--heun)}
+.go{width:100%; margin-top:20px; padding:14px; background:var(--heun); color:#fff; border:0; border-radius:12px; font-size:17px; transition:transform .15s, filter .2s}
+.go:hover{transform:translateY(-2px); filter:brightness(1.08)}
+.err{color:var(--euler); font:500 13px var(--mono); margin-top:12px; min-height:1em}
+
+.stats{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px}
+.stat{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; border-top:4px solid var(--exact)}
+.stat.e{border-top-color:var(--euler)} .stat.h{border-top-color:var(--heun)}
+.stat i{display:block; font:400 10.5px var(--mono); letter-spacing:.1em; text-transform:uppercase; color:var(--soft); font-style:normal}
+.stat b{font:500 18px var(--mono); word-break:break-all}
+.fig{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:12px 12px 8px}
+.fig svg{display:block; width:100%; height:auto}
+.legend{display:flex; gap:8px 18px; flex-wrap:wrap; padding:8px 6px 4px; font:400 13px var(--mono)}
+.legend label{margin:0; display:flex; align-items:center; gap:7px; text-transform:none; letter-spacing:0; color:var(--ink); font:400 13px var(--mono); cursor:pointer}
+.legend input{accent-color:var(--heun)}
+.legend i{width:22px; border-top:3px solid; display:inline-block}
+.ax{font:400 11px var(--mono); fill:var(--soft)}
+.note{margin-top:14px; padding:13px 16px; border-radius:12px; background:var(--panel); border:1px solid var(--line); border-left:5px solid var(--heun); font-size:16px}
+h4{font:600 20px var(--head); margin:30px 0 10px}
+
+.step{display:grid; grid-template-columns:58px 1fr; gap:14px; padding:16px 0; border-top:1px solid var(--line)}
+.step .n{font:800 38px/1 var(--head); color:var(--heun)}
+.step p{margin:3px 0; font:400 14.5px/1.55 var(--mono); overflow-wrap:anywhere}
+.step b{color:var(--heun); font-weight:500}
+.step em{color:var(--euler); font-style:normal}
+.more{margin-top:10px; background:transparent; border:1.5px solid var(--ink); color:var(--ink); border-radius:99px; padding:8px 18px}
+.more:hover{background:var(--ink); color:var(--bg)}
+.tablewrap{overflow:auto; max-height:430px; margin-top:22px; border:1px solid var(--line); border-radius:14px; background:var(--panel)}
+table{border-collapse:collapse; width:100%; font:400 13px var(--mono)}
+th,td{padding:8px 12px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--line)}
+th{position:sticky; top:0; background:var(--ink); color:var(--bg); font-weight:500}
+footer{margin-top:64px; padding-top:16px; border-top:1px solid var(--line); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font:400 12px var(--mono); color:var(--soft)}
+
+@media (max-width:820px){ .duo,.lab{grid-template-columns:1fr} .stats{grid-template-columns:1fr 1fr} .hero svg.topo{width:420px; right:-120px} body{font-size:16.5px} }
+.reveal{animation:rise .6s both}
+@keyframes rise{from{opacity:0; transform:translateY(12px)}}
+.draw{stroke-dasharray:1; stroke-dashoffset:1; animation:draw 1.3s ease forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){.reveal,.draw{animation:none; stroke-dashoffset:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="hero reveal">
+  <svg class="topo" viewBox="0 0 600 600" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+    <ellipse cx="300" cy="300" rx="290" ry="230" transform="rotate(-18 300 300)"/>
+    <ellipse cx="300" cy="300" rx="245" ry="190" transform="rotate(-14 300 300)"/>
+    <ellipse cx="300" cy="300" rx="200" ry="150" transform="rotate(-9 300 300)"/>
+    <ellipse cx="300" cy="300" rx="155" ry="112" transform="rotate(-4 300 300)"/>
+    <ellipse cx="300" cy="300" rx="110" ry="76" transform="rotate(2 300 300)"/>
+    <ellipse cx="300" cy="300" rx="66" ry="42" transform="rotate(8 300 300)"/>
+    <ellipse cx="300" cy="300" rx="28" ry="16" transform="rotate(14 300 300)"/>
+  </svg>
+  <span class="tag">Método de Heun · Euler mejorado</span>
+  <h1>Dos pendientes<br>valen <span>más que una</span></h1>
+  <p class="sub">Euler mira una sola vez. Euler mejorado mira, corrige y promedia.</p>
+</div>
+
+<section class="reveal">
+  <h2>La idea</h2>
+  <p class="lead">Euler explícito usa la pendiente del inicio del intervalo y se desvía de la curva. Heun da un salto de prueba, mide la pendiente al final y usa el promedio de ambas.</p>
+  <div class="duo">
+    <div class="card">
+      <h3><span class="dot" style="background:var(--euler)"></span>Euler explícito</h3>
+      <div class="math">yₙ₊₁ = yₙ + h·f(xₙ, yₙ)</div>
+      <p>Una pendiente por paso. Error global de orden <b>h</b>.</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--heun)"></span>Euler mejorado (Heun)</h3>
+      <div class="math">k₁ = f(xₙ, yₙ)<br>ỹ = yₙ + h·k₁ &nbsp;(predictor)<br>k₂ = f(xₙ + h, ỹ)<br>yₙ₊₁ = yₙ + (h/2)·(k₁ + k₂)</div>
+      <p>Dos pendientes por paso. Error global de orden <b>h²</b>.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Calculadora</h2>
+  <p class="lead">Escribe la ecuación, sus condiciones iniciales y la solución exacta. Compara los dos métodos contra la función original.</p>
+  <div class="lab">
+    <form id="f" autocomplete="off">
+      <label for="eq">Ecuación diferencial</label>
+      <div class="fx"><span>y′ =</span><input id="eq" type="text" value="x + y" spellcheck="false"></div>
+      <p class="hint">Math.js entiende x, y, + − * / ^, sin, cos, exp, ln, sqrt, abs, pi, e y multiplicación como 2x. Para log base 10 usa log10().</p>
+      <div class="chips" id="chips"></div>
+      <div class="row">
+        <div><label for="x0">x₀ inicial</label><input id="x0" type="number" step="any" value="0"></div>
+        <div><label for="y0">y₀ = y(x₀)</label><input id="y0" type="number" step="any" value="1"></div>
+      </div>
+      <div class="row">
+        <div><label for="xf">x final</label><input id="xf" type="number" step="any" value="1"></div>
+        <div><label for="h">Paso h</label><input id="h" type="number" step="any" value="0.2"></div>
+      </div>
+      <label for="ex">Solución exacta</label>
+      <div class="fx"><span>y =</span><input id="ex" type="text" value="2*exp(x) - x - 1" spellcheck="false"></div>
+      <p class="hint">La función original con tu condición inicial. El error se calcula contra ella.</p>
+      <button class="go" type="submit">Calcular</button>
+      <div class="err" id="err" role="alert"></div>
+    </form>
+    <div id="out" aria-live="polite"></div>
+  </div>
+</section>
+
+<section id="stepsec" hidden>
+  <h2>Paso a paso (Heun)</h2>
+  <p class="lead">Cada paso con k₁, el predictor, k₂ y el promedio. En naranja, lo que habría dado Euler explícito.</p>
+  <div id="steps"></div>
+  <button class="more" id="more" hidden>Mostrar todos</button>
+  <div class="tablewrap"><table id="tbl"></table></div>
+</section>
+
+<footer><span>EULER MEJORADO · HEUN</span><span>Error local O(h³) · Error global O(h²) · Math.js</span></footer>
+</div>
+
+<script src="lib/math.min.js"></script>
+<script>window.math||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.min.js"><\/script>')</script>
+<script>
+const $=s=>document.querySelector(s);
+const SUB='₀₁₂₃₄₅₆₇₈₉', sub=n=>String(n).split('').map(d=>SUB[d]).join('');
+const fmt=(v,d=6)=>!isFinite(v)?String(v):v===0?'0':math.format(v,{precision:d,lowerExp:-4,upperExp:6});
+
+/* ---------- Math.js: de texto a función ---------- */
+function prep(s){return s.replace(/[·×]/g,'*').replace(/[−–]/g,'-').replace(/²/g,'^2').replace(/³/g,'^3').replace(/\bln\b/gi,'log')}
+function compile(src){
+  if(!src||!src.trim())throw new Error('Escribe una expresión.');
+  let code;
+  try{code=math.parse(prep(src)).compile()}
+  catch(e){throw new Error('No pude leer «'+src+'»: '+e.message)}
+  return (x,y)=>{
+    let v;
+    try{v=code.evaluate({x,y,t:x})}
+    catch(e){throw new Error(e.message.replace('Undefined symbol','No reconozco el símbolo'))}
+    if(typeof v!=='number')throw new Error('La expresión no da un número real en x='+fmt(x,4)+', y='+fmt(y,4));
+    return v;
+  };
+}
+
+/* ---------- Métodos ---------- */
+function steps(f,x0,y0,xf,h,heun){
+  const rows=[];let x=x0,y=y0,n=0;
+  while(x<xf-1e-12*Math.max(1,Math.abs(xf))){
+    const hh=Math.min(h,xf-x),k1=f(x,y),yp=y+hh*k1;
+    let k2=null,yn=yp;
+    if(heun){k2=f(x+hh,yp);yn=y+hh/2*(k1+k2)}
+    rows.push({n,x,y,k1,yp,k2,hh,xn:x+hh,yn});x+=hh;y=yn;n++;
+    if(!isFinite(y))break;
+  }
+  return rows;
+}
+
+/* ---------- Ejemplos ---------- */
+const PRESETS=[
+ {l:'y′ = x + y',eq:'x + y',x0:0,y0:1,xf:1,h:.2,ex:'2*exp(x) - x - 1'},
+ {l:'y′ = y',eq:'y',x0:0,y0:1,xf:2,h:.25,ex:'exp(x)'},
+ {l:'y′ = x − y',eq:'x - y',x0:0,y0:1,xf:2,h:.2,ex:'x - 1 + 2*exp(-x)'},
+ {l:'y′ = −2xy',eq:'-2*x*y',x0:0,y0:1,xf:2,h:.2,ex:'exp(-x^2)'},
+ {l:'Logística',eq:'y*(1-y)',x0:0,y0:.1,xf:8,h:.5,ex:'1/(1+9*exp(-x))'},
+ {l:'y′ = sin(x) − y',eq:'sin(x) - y',x0:0,y0:0,xf:6,h:.3,ex:'(sin(x) - cos(x) + exp(-x))/2'}
+];
+PRESETS.forEach(p=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=p.l;
+  b.onclick=()=>{for(const k of ['eq','x0','y0','xf','h','ex'])$('#'+k).value=p[k];calc()};$('#chips').appendChild(b)});
+
+/* ---------- Gráficas ---------- */
+function niceTicks(a,b,n=5){const span=b-a||1,raw=span/n,mag=Math.pow(10,Math.floor(Math.log10(raw))),r=raw/mag,
+  step=(r<1.5?1:r<3?2:r<7?5:10)*mag,out=[];for(let v=Math.ceil(a/step-1e-9)*step;v<=b+1e-9;v+=step)out.push(+v.toPrecision(12));return out}
+
+function plot(series,{W=820,H=440,m={l:60,r:20,t:16,b:40},bars=false}={}){
+  const all=series.flatMap(s=>s.pts).filter(p=>isFinite(p[1]));
+  let x0=Math.min(...all.map(p=>p[0])),x1=Math.max(...all.map(p=>p[0])),y0=Math.min(...all.map(p=>p[1])),y1=Math.max(...all.map(p=>p[1]));
+  if(y0===y1){y0-=1;y1+=1}
+  const pad=(y1-y0)*.08;y1+=pad;y0=bars?Math.min(0,y0):y0-pad;
+  const X=v=>m.l+(v-x0)/(x1-x0)*(W-m.l-m.r),Y=v=>H-m.b-(v-y0)/(y1-y0)*(H-m.t-m.b);
+  let g='';
+  niceTicks(y0,y1).forEach(v=>g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text class="ax" x="${m.l-8}" y="${Y(v)+4}" text-anchor="end">${fmt(v,3)}</text>`);
+  niceTicks(x0,x1,6).forEach(v=>g+=`<text class="ax" x="${X(v)}" y="${H-m.b+18}" text-anchor="middle">${fmt(v,3)}</text>`);
+  g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${H-m.b}" y2="${H-m.b}" stroke="var(--ink)" opacity=".5"/>`;
+  series.forEach((s,k)=>{
+    const d=s.pts.filter(p=>isFinite(p[1])).map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join('');
+    g+=`<g id="${s.id}-${bars?'e':'g'}"><path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.w}" ${s.dash?`stroke-dasharray="${s.dash}"`:''} stroke-linejoin="round" stroke-linecap="round" ${s.dash?'':'pathLength="1" class="draw"'} style="${s.dash?'':`animation-delay:${k*.25}s`}"/>`;
+    if(s.dots)s.pts.forEach((p,i)=>g+=`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="${s.pts.length>60?2:4}" fill="var(--panel)" stroke="${s.color}" stroke-width="2"><title>${s.name} n=${i}: (${fmt(p[0],5)}, ${fmt(p[1],5)})</title></circle>`);
+    g+='</g>';
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${bars?'Error absoluto por paso':'Soluciones: exacta, Euler y Heun'}">${g}</svg>`;
+}
+
+/* ---------- Cálculo ---------- */
+function calc(e){
+  if(e)e.preventDefault();
+  const err=$('#err');err.textContent='';
+  try{
+    const f=compile($('#eq').value),exTxt=$('#ex').value.trim();
+    const x0=+$('#x0').value,y0=+$('#y0').value,xf=+$('#xf').value,h=+$('#h').value;
+    if([x0,y0,xf,h].some(v=>isNaN(v)||!isFinite(v)))throw new Error('Revisa los valores numéricos.');
+    if(xf<=x0)throw new Error('x final debe ser mayor que x₀.');
+    if(h<=0)throw new Error('El paso h debe ser positivo.');
+    if((xf-x0)/h>2000)throw new Error('Demasiados pasos (máx. 2000). Aumenta h.');
+    if(!exTxt)throw new Error('Escribe la solución exacta y(x) para calcular el error.');
+    const g0=compile(exTxt),g=x=>g0(x,0);
+    if(Math.abs(g(x0)-y0)>1e-6*Math.max(1,Math.abs(y0)))throw new Error('La solución exacta no cumple y(x₀)=y₀ ('+fmt(g(x0),5)+' ≠ '+fmt(y0,5)+'). Revisa la constante.');
+
+    const H=steps(f,x0,y0,xf,h,true),E=steps(f,x0,y0,xf,h,false);
+    if(!H.length||!isFinite(H[H.length-1].yn)||!isFinite(E[E.length-1].yn))throw new Error('La solución se disparó a infinito. Prueba con h más pequeño.');
+    const xs=[x0,...H.map(r=>r.xn)],yH=[y0,...H.map(r=>r.yn)],yE=[y0,...E.map(r=>r.yn)],yX=xs.map(g);
+    if(yX.some(v=>!isFinite(v)))throw new Error('La solución exacta no es válida en el intervalo.');
+    const eH=yH.map((v,i)=>Math.abs(yX[i]-v)),eE=yE.map((v,i)=>Math.abs(yX[i]-v));
+    const fH=eH[eH.length-1],fE=eE[eE.length-1],yF=yX[yX.length-1];
+    const rel=yF!==0?fH/Math.abs(yF)*100:NaN;
+    const curve=[];for(let i=0;i<=260;i++){const x=x0+(xf-x0)*i/260;curve.push([x,g(x)])}
+
+    // prueba con h/2
+    let half='';
+    try{const H2=steps(f,x0,y0,xf,h/2,true),e2=Math.abs(yF-H2[H2.length-1].yn);
+      if(fH>0&&isFinite(e2))half=`<div class="note"><b>Prueba con h/2 = ${fmt(h/2)}:</b> el error final de Heun baja a <b>${fmt(e2,4)}</b>, o sea ${fmt(e2/fH,3)}× el actual. Al ser un método de orden 2, partir h por la mitad lo reduce a cerca de un cuarto (0.25×).</div>`}catch(_){}
+
+    const S=[
+      {id:'ex',name:'Exacta',pts:curve,color:'var(--exact)',w:3.4},
+      {id:'eu',name:'Euler',pts:xs.map((x,i)=>[x,yE[i]]),color:'var(--euler)',w:2.2,dots:true,dash:'7 6'},
+      {id:'he',name:'Heun',pts:xs.map((x,i)=>[x,yH[i]]),color:'var(--heun)',w:2.6,dots:true}
+    ];
+    const ES=[
+      {id:'eu',name:'Euler',pts:xs.map((x,i)=>[x,eE[i]]),color:'var(--euler)',w:2.4},
+      {id:'he',name:'Heun',pts:xs.map((x,i)=>[x,eH[i]]),color:'var(--heun)',w:2.4}
+    ];
+    const lg=(k,items)=>`<div class="legend">${items.map(([id,n,c])=>`<label><input type="checkbox" checked data-t="${id}" data-k="${k}"><i style="border-color:${c}"></i>${n}</label>`).join('')}</div>`;
+    $('#out').innerHTML=`
+      <div class="stats reveal">
+        <div class="stat"><i>Pasos</i><b>${H.length}</b></div>
+        <div class="stat h"><i>y Heun en x=${fmt(xf,4)}</i><b>${fmt(yH[yH.length-1])}</b></div>
+        <div class="stat h"><i>Error Heun</i><b>${fmt(fH,4)}</b></div>
+        <div class="stat e"><i>Error Euler</i><b>${fmt(fE,4)}</b></div>
+      </div>
+      <div class="fig reveal">${plot(S)}${lg('g',[['ex','Solución exacta','var(--exact)'],['eu','Euler explícito','var(--euler)'],['he','Euler mejorado','var(--heun)']])}</div>
+      <h4>Error absoluto en cada paso</h4>
+      <div class="fig reveal">${plot(ES,{H:230,bars:true})}${lg('e',[['eu','Euler explícito','var(--euler)'],['he','Euler mejorado','var(--heun)']])}</div>
+      <p class="hint">Error relativo final de Heun: <b>${isFinite(rel)?fmt(rel,3)+' %':'—'}</b> · Euler cometió ${fE>0?fmt(fE/Math.max(fH,1e-300),3):'—'}× el error de Heun en el último punto.</p>
+      ${half}`;
+    document.querySelectorAll('.legend input').forEach(c=>c.onchange=()=>{
+      const el=document.getElementById(c.dataset.t+'-'+c.dataset.k);if(el)el.style.display=c.checked?'':'none'});
+    buildSteps(H,E,yX,eH,eE);
+  }catch(ex){err.textContent='⚠ '+ex.message}
+}
+
+function stepHTML(r,q){
+  const i=r.n;
+  return `<div class="step"><div class="n">${i+1}</div><div>
+    <p>k₁ = f(${fmt(r.x,5)}, ${fmt(r.y,5)}) = <b>${fmt(r.k1)}</b></p>
+    <p>ỹ = ${fmt(r.y,5)} + ${fmt(r.hh,5)}·${fmt(r.k1,5)} = <b>${fmt(r.yp)}</b></p>
+    <p>k₂ = f(${fmt(r.xn,5)}, ${fmt(r.yp,5)}) = <b>${fmt(r.k2)}</b></p>
+    <p>y${sub(i+1)} = ${fmt(r.y,5)} + (${fmt(r.hh,5)}/2)·(${fmt(r.k1,5)} + ${fmt(r.k2,5)}) = <b>${fmt(r.yn)}</b> &nbsp;<em>(Euler: ${fmt(q.yn)})</em></p></div></div>`;
+}
+function buildSteps(H,E,yX,eH,eE){
+  $('#stepsec').hidden=false;
+  const box=$('#steps'),btn=$('#more'),LIM=4;
+  const render=all=>{box.innerHTML=H.slice(0,all?H.length:LIM).map((r,i)=>stepHTML(r,E[i])).join('');
+    btn.hidden=H.length<=LIM||all;btn.textContent='Mostrar los '+H.length+' pasos'};
+  render(false);btn.onclick=()=>render(true);
+  let t=`<thead><tr><th>n</th><th>xₙ</th><th>yₙ Heun</th><th>k₁</th><th>ỹ</th><th>k₂</th><th>y Euler</th><th>y exacta</th><th>error Heun</th><th>error Euler</th></tr></thead><tbody>`;
+  H.forEach((r,i)=>t+=`<tr><td>${r.n}</td><td>${fmt(r.x,5)}</td><td>${fmt(r.y)}</td><td>${fmt(r.k1)}</td><td>${fmt(r.yp)}</td><td>${fmt(r.k2)}</td><td>${fmt(E[i].y)}</td><td>${fmt(yX[i])}</td><td>${fmt(eH[i],4)}</td><td>${fmt(eE[i],4)}</td></tr>`);
+  const L=H.length,l=H[L-1];
+  t+=`<tr><td>${L}</td><td>${fmt(l.xn,5)}</td><td>${fmt(l.yn)}</td><td>—</td><td>—</td><td>—</td><td>${fmt(E[L-1].yn)}</td><td>${fmt(yX[L])}</td><td>${fmt(eH[L],4)}</td><td>${fmt(eE[L],4)}</td></tr></tbody>`;
+  $('#tbl').innerHTML=t;
+}
+$('#f').addEventListener('submit',calc);
+calc();
+</script>
+</body>
+</html>
